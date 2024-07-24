@@ -42,22 +42,69 @@
        delegate_to: localhost
        
      #
-     # Block for Taking Backup for Qmgrs
+     # Block for Taking Backup for DEV Qmgrs
      #
      - block:
-         - name: Getting Queue Manager
+         - name: Getting Queue DEV Manager
            set_fact:
               qm: {{ QMgrName }}
 
-         - name: Print the Queue Manager
+         - name: Print the DEV Queue Manager
            debug:
              msg: "{{ qm }}"
 
-         - name: Prepare and Take MQ Backup for the QMgr
+         - name: Prepare and Take MQ Backup for the DEV QMgr
            include_role:
               name: mqbkup_qmgr
            vars:
               qmgr: "{{ qm }}"
+              env: "DEV"
        when:
          - "'unreachable' not in ping_result"
+         - "'DEV' in group_names"
+
+     #
+     # Block for Taking Backup for QA Qmgrs
+     #
+     - block:
+         - name: Getting QA Queue Manager
+           set_fact:
+              qm: {{ QMgrName }}
+
+         - name: Print the QA Queue Manager
+           debug:
+             msg: "{{ qm }}"
+
+         - name: Prepare and Take MQ Backup for the QA QMgr
+           include_role:
+              name: mqbkup_qmgr
+           vars:
+              qmgr: "{{ qm }}"
+              env: "QA"
+       when:
+         - "'unreachable' not in ping_result"
+         - "'QA' in group_names"
+
+     #
+     # Block for Taking Backup for PROD Qmgrs
+     #
+     - block:
+         - name: Getting PROD Queue Manager
+           set_fact:
+              qm: {{ QMgrName }}
+
+         - name: Print the PROD Queue Manager
+           debug:
+             msg: "{{ qm }}"
+
+         - name: Prepare and Take MQ Backup for the PROD QMgr
+           include_role:
+              name: mqbkup_qmgr
+           vars:
+              qmgr: "{{ qm }}"
+              env: "PROD"
+       when:
+         - "'unreachable' not in ping_result"
+         - "'PROD' in group_names"
+     
 
