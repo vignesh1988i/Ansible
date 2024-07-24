@@ -1,0 +1,6 @@
+---
+#
+# vars file for mqbkup_qmgr
+# you can give relavent directory name as per your requirement
+#
+local_bkup_dir: "/data/mqm/common"
