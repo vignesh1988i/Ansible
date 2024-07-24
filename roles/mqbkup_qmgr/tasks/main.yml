@@ -5,15 +5,15 @@
 # Role Path can be altered based on your Firm based Data Path
 #
 - include_vars:
-     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/bkup_prereq/vars/nondev.yml"
+     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/bkup_prereq/vars/{{ env }}.yml"
 
-- name: Take backup for Non DEV qmgr
+- name: Take backup for the qmgr
   include_role:
      name: mq_backup
   vars:
      qmgrname: "{{ qmgr }}"
-     bkup_vars: "nondev.yml"
-     preq_vars: "nondev.yml"
+     bkup_vars: "{{ env }}.yml"
+     preq_vars: "{{ env }}.yml"
      bkup_local_dir: "{{ local_bkup_dir }}"
      scan_path: "{{ mqbkup_prefix_location }}/{{ qmgr }}/{{mqbkup_dir}}/{{ qmgr }}"
 
@@ -21,17 +21,21 @@
   debug:
     msg: "{{ temp_bkup_file }}"
 
+#
+# Role Path can be altered based on your Firm based Data Path
+#
+
 - block:
     - name: Prepare the MQ Backup directory structure
       include_role:
          name: bkup_prereq
       vars:
          qmgrname: "{{ qmgr }}"
-         bkup_prereq_vars: "nondev.yml"
+         bkup_prereq_vars: "{{ env }}.yml"
          path: "{{ mqbkup_prefix_location }}/{{ qmgr }}/{{mqbkup_dir}}/{{ qmgr }}"
 
     - include_vars:
-         file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/mq_backup/vars/nondev.yml"
+         file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/mq_backup/vars/{{ env }}.yml"
 
     - name: Based on the backup status for current run, copy it to the orginal location
       copy:
@@ -57,9 +61,9 @@
      name: add_symlink
   vars:
      qmgrname: "{{ qmgr }}"
-     add_symlink_vars: "nondev.yml"
-     bkup_prereq_vars: "nondev.yml"
-     bkup_vars: "nondev.yml"
+     add_symlink_vars: "{{ env }}.yml"
+     bkup_prereq_vars: "{{ env }}.yml"
+     bkup_vars: "{{ env }}.yml"
      path: "{{ mqbkup_prefix_location }}/{{ qmgr }}/{{mqbkup_dir}}/{{ qmgr }}"
   when:
     - mqbackup_rc == 'success'
@@ -76,8 +80,11 @@
   register: fetch_files
   when: mqbackup_rc == 'success'
 
+#
+# Role Path can be altered based on your Firm based Data Path
+#
 - include_vars:
-     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/add_symlink/vars/nondev.yml"
+     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/add_symlink/vars/{{ env }}.yml"
 
 - name: Create/Repoint symlink for the ansible local node bkup files
   file:
