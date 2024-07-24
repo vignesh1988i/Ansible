@@ -1,0 +1,63 @@
+---
+ #
+ # Ansible Playbook Pakcage for taking Queue Manager backup
+ #
+ # 1) Takes Queue Manager backup and save it on Managed node and Ansible local node (2 way copies of the same backup)
+ # 2) Manages old backup files as per retention value 
+ # 3) Fetches all the backup status and host unreachable files to ansible local nodes
+ # 4) Send as backup status report on an email 
+ #
+ # Version: 1.0
+ # Author: Vignesh Sundararaman
+ #
+ - name: Playbook for taking Queue Manager Object Backup
+   hosts: "{{ HOST }}"
+   gather_facts: no
+   serial: 1
+   tasks:
+     - name: Clean up previous status files
+       file:
+         path: "/tmp/bkup_status.txt"
+         state: absent
+       run_once: yes
+       delegate_to: localhost
+
+     - name: Do ping test first
+       ping:
+       register: ping_result
+       ignore_unreachable: true
+
+     - name: display debug result
+       delegate_to: localhost
+       debug:
+         msg: "{{ ping_result }}"
+         - name: write server unreachable failure for Qmgr Host
+           lineinfile:
+              path: '{{ mq_status_file_loc }}/{{ mq_status_file_prefix }}_{{ QmgrName }}_failure.txt'
+              line: "{{ QmgrName }}/-1/Host Unavailable, Backup process failed"
+              create: yes
+              mode: '0644'
+       when:
+         - "'unreachable' in ping_result"
+       delegate_to: localhost
+       
+     #
+     # Block for Taking Backup for Qmgrs
+     #
+     - block:
+         - name: Getting Queue Manager
+           set_fact:
+              qm: {{ QMgrName }}
+
+         - name: Print the Queue Manager
+           debug:
+             msg: "{{ qm }}"
+
+         - name: Prepare and Take MQ Backup for the QMgr
+           include_role:
+              name: mqbkup_qmgr
+           vars:
+              qmgr: "{{ qm }}"
+       when:
+         - "'unreachable' not in ping_result"
+
