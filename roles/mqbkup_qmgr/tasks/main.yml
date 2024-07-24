@@ -11,6 +11,7 @@
   include_role:
      name: mq_backup
   vars:
+     environment: "{{ env }}"
      qmgrname: "{{ qmgr }}"
      bkup_vars: "{{ env }}.yml"
      preq_vars: "{{ env }}.yml"
@@ -30,6 +31,7 @@
       include_role:
          name: bkup_prereq
       vars:
+         environment: "{{ env }}"
          qmgrname: "{{ qmgr }}"
          bkup_prereq_vars: "{{ env }}.yml"
          path: "{{ mqbkup_prefix_location }}/{{ qmgr }}/{{mqbkup_dir}}/{{ qmgr }}"
@@ -60,6 +62,7 @@
   include_role:
      name: add_symlink
   vars:
+     environment: "{{ env }}"
      qmgrname: "{{ qmgr }}"
      add_symlink_vars: "{{ env }}.yml"
      bkup_prereq_vars: "{{ env }}.yml"
