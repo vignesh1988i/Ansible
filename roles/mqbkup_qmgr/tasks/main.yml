@@ -1,0 +1,100 @@
+---
+# tasks file for mqbkup_qmgr
+
+#
+# Role Path can be altered based on your Firm based Data Path
+#
+- include_vars:
+     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/bkup_prereq/vars/nondev.yml"
+
+- name: Take backup for Non DEV qmgr
+  include_role:
+     name: mq_backup
+  vars:
+     qmgrname: "{{ qmgr }}"
+     bkup_vars: "nondev.yml"
+     preq_vars: "nondev.yml"
+     bkup_local_dir: "{{ local_bkup_dir }}"
+     scan_path: "{{ mqbkup_prefix_location }}/{{ qmgr }}/{{mqbkup_dir}}/{{ qmgr }}"
+
+- name: Diplay temp file for backup
+  debug:
+    msg: "{{ temp_bkup_file }}"
+
+- block:
+    - name: Prepare the MQ Backup directory structure
+      include_role:
+         name: bkup_prereq
+      vars:
+         qmgrname: "{{ qmgr }}"
+         bkup_prereq_vars: "nondev.yml"
+         path: "{{ mqbkup_prefix_location }}/{{ qmgr }}/{{mqbkup_dir}}/{{ qmgr }}"
+
+    - include_vars:
+         file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/mq_backup/vars/nondev.yml"
+
+    - name: Based on the backup status for current run, copy it to the orginal location
+      copy:
+         src: "{{ temp_bkup_file }}"
+         dest: "{{ mqbkup_prefix_location }}/{{ qmgr }}/{{mqbkup_dir}}/{{ qmgr }}/{{ mq_bkup_file_prefix }}_{{ date_stamp }}.mqsc"
+         mode: '{{ mqbkup_dir_perms }}'
+         remote_src: yes
+      register: copy_files
+
+  when: mqbackup_rc == 'success'
+
+
+- name: show if Copy has failed
+  debug:
+    msg: "{{ copy_files.failed }}"
+  when:
+    - mqbackup_rc == 'success'
+    - copy_files is defined
+    - copy_files.failed|bool == false
+
+- name: switch the symlink to the latest file
+  include_role:
+     name: add_symlink
+  vars:
+     qmgrname: "{{ qmgr }}"
+     add_symlink_vars: "nondev.yml"
+     bkup_prereq_vars: "nondev.yml"
+     bkup_vars: "nondev.yml"
+     path: "{{ mqbkup_prefix_location }}/{{ qmgr }}/{{mqbkup_dir}}/{{ qmgr }}"
+  when:
+    - mqbackup_rc == 'success'
+    - copy_files.failed|bool == false
+
+
+- name: fetch the same bkup files under the ansible local node
+  fetch:
+    src: "{{ mqbkup_prefix_location }}/{{ qmgr }}/{{mqbkup_dir}}/{{ qmgr }}/{{ mq_bkup_file_prefix }}_{{ date_stamp }}.mqsc"
+    dest: "{{ local_bkup_dir }}/{{ mqbkup_dir}}/{{ qmgr }}/{{ mq_bkup_file_prefix }}_{{ date_stamp }}.mqsc"
+    mode: '{{ mqbkup_dir_perms }}'
+    flat: yes
+    remote_src: yes
+  register: fetch_files
+  when: mqbackup_rc == 'success'
+
+- include_vars:
+     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/add_symlink/vars/nondev.yml"
+
+- name: Create/Repoint symlink for the ansible local node bkup files
+  file:
+    src: "{{ local_bkup_dir }}/{{ mqbkup_dir}}/{{ qmgr }}/{{ mq_bkup_file_prefix }}_{{ date_stamp }}.mqsc"
+    dest: "{{ local_bkup_dir }}/{{ mqbkup_dir}}/{{ qmgr }}/{{ links }}"
+    state: link
+  when: mqbackup_rc == 'success'
+  delegate_to: localhost
+
+- name: print the fetched bkup files
+  debug:
+    msg: "{{ fetch_files }}"
+  when: mqbackup_rc == 'success'
+
+- name: Removing temp files
+  file:
+    path: "{{ temp_bkup_file }}"
+    state: absent
+  when: temp_bkup_file is defined
+
