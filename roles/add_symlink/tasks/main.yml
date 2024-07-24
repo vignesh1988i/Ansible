@@ -1,0 +1,37 @@
+---
+# tasks file for add_symlink
+
+- include_vars:
+     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/add_symlink/vars/{{ add_symlink_vars }}"
+  when: add_symlink_vars is defined
+
+- include_vars:
+     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/mq_backup/vars/{{ bkup_vars }}"
+  when: bkup_vars is defined
+
+- include_vars:
+     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/bkup_prereq/vars/{{ bkup_prereq_vars }}"
+  when: bkup_prereq_vars is defined
+
+- set_fact:
+     backup_path: "{{ path | default (mqbkup_prefix_location + '/' + mqbkup_dir + '/' + qmgrname) }}"
+     #backup_path: "{{ mqbkup_prefix_location }}/{{mqbkup_dir}}/{{ qmgrname }}"
+
+- name: check if recent backup file exists
+  stat:
+   path: "{{ backup_path }}/{{ mq_bkup_file_prefix }}_{{ date_stamp }}.mqsc"
+  register: bkup_file_status
+
+- name: display the symlinking directory location and the file 
+  debug:
+    msg:
+     - "{{ backup_path }}"
+     - "{{ backup_path }}/{{ mq_bkup_file_prefix }}_{{ date_stamp }}.mqsc"
+  when: bkup_file_status.stat.exists
+
+- name: Symlink repoint to the latest file
+  file:
+   src: "{{ backup_path }}/{{ mq_bkup_file_prefix }}_{{ date_stamp }}.mqsc"
+   dest: "{{ backup_path }}/{{ links }}"
+   state: link
+  when: bkup_file_status.stat.exists
