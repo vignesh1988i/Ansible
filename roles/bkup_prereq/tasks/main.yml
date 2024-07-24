@@ -1,6 +1,9 @@
 ---
 # tasks file for bkup_prereq
 
+#
+# Role Path can be altered based on your Firm based Data Path
+#
 - block:
    - include_vars:
         file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/bkup_prereq/vars/{{ bkup_prereq_vars }}"
