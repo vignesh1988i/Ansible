@@ -1,0 +1,184 @@
+---
+# tasks file for mq_backup
+
+- include_vars:
+     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/mq_backup/vars/{{ bkup_vars }}"
+  when: bkup_vars is defined and qmgrname is defined
+
+- include_vars:
+     file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/bkup_prereq/vars/{{ preq_vars }}"
+  when: preq_vars is defined and qmgrname is defined
+
+- name: Create temporary file for MQ Backup
+  tempfile:
+     state: file
+     suffix: mqbkup
+  register: tempfile
+  when: qmgrname is defined
+
+- name: Display if the temp path is defined/created
+  debug:
+    msg: "{{ tempfile.path }}"
+  when: tempfile.path is defined and qmgrname is defined
+
+- name: set fact to assign the temp file
+  set_fact:
+     temp_bkup_file: "{{ tempfile.path }}"
+  when: qmgrname is defined
+
+- name: Take MQ Backup for the Queue manager
+  shell: "{{ mq_bkup_bin }} -m {{ qmgrname }} -a -o mqsc -w {{ mq_dump_wait_time }} > {{ tempfile.path }}"
+  retries: 3  
+  delay: 15
+  register: mqbkup
+  until: mqbkup.rc == 0
+  when: tempfile.path is defined and qmgrname is defined
+  ignore_errors: yes
+
+- name: Display the Output for MQ Backup for the Queue manager
+  debug:
+    msg: "{{ mqbkup }}"
+  when: tempfile.path is defined and qmgrname is defined
+
+- name: Set the MQ backup run return code
+  set_fact:
+     mqbackup_rc: "{% if mqbkup.rc != 0 %}fail{% else %}success{% endif %}"
+  when: mqbkup is defined and qmgrname is defined
+
+- name: display the string return code
+  debug:
+     msg: "{{ mqbackup_rc }}"
+  when: mqbackup_rc is defined and qmgrname is defined
+
+
+
+- block:
+    - name: write overall success of the mqbackup to the success file
+      lineinfile:
+         path: '{{ mq_status_file_loc }}/{{ mq_status_file_prefix }}_{{ qmgrname }}_success.txt'
+         line: "{{ qmgrname }}/0/MQBackup is successful"
+         create: yes
+         mode: '0644'
+      
+    - name: Fetch the success status file to ansible node
+      fetch:
+        src: '{{ mq_status_file_loc }}/{{ mq_status_file_prefix }}_{{ qmgrname }}_success.txt'
+        dest: '{{ mq_status_file_loc }}/{{ mq_status_file_prefix }}_{{ qmgrname }}_success.txt'
+        flat: yes
+      register: fetch_success_status
+
+    - name: display the fetch status response
+      debug:
+        msg: "{{ fetch_success_status }}"
+
+    - name: Delete the remote success status files
+      file:
+        path: '{{ mq_status_file_loc }}/{{ mq_status_file_prefix }}_{{ qmgrname }}_success.txt'
+        state: absent
+
+    - name: Get the scanning directory path to manage old backup files on remote node
+      set_fact:
+         backup_path: "{{ scan_path | default (mqbkup_prefix_location + '/' + mqbkup_dir + '/' + qmgrname) }}"
+
+    - name: For deleting old files, display scanning directories on remote node
+      debug:
+        msg: "{{ backup_path }}"
+
+    - name: find old backup files on remote node
+      find:
+        paths: "{{ backup_path }}"
+        file_type: file
+        patterns: '^{{ mq_bkup_file_prefix }}.*.mqsc$'
+        use_regex: yes
+        age: "{{ bkup_retention }}"
+      register: find_files
+
+    - name: display the full find_files result
+      debug:
+        msg: "{{ find_files }}"
+
+    - name: display the backup files in scope of deletion on remote node
+      debug:
+        msg: "{{ item }}"
+      with_items: "{{ find_files.files | map(attribute='path') | list }}"
+      
+    - name: delete the old backup files on remote node
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items: "{{ find_files.files | map(attribute='path') | list }}"
+
+  when:
+    - mqbkup.rc == 0
+    - qmgrname is defined
+
+
+
+
+- block:
+    - name: Get the scanning directory path to manage old backup files in ansible node
+      set_fact:
+         local_node_backup_path: "{{ local_scan_path | default (bkup_local_dir + '/' + mqbkup_dir + '/' + qmgrname) }}"
+         
+    - name: For deleting old files on ansible node, display scanning directories
+      debug:
+        msg: "{{ local_node_backup_path }}"
+
+    - name: find old backup files on ansible node 
+      find: 
+        paths: "{{ local_node_backup_path }}"
+        file_type: file
+        patterns: '^{{ mq_bkup_file_prefix }}.*.mqsc$'
+        use_regex: yes
+        age: "{{ bkup_retention }}"
+      register: find_local_files
+
+    - name: display the full find_local_files result
+      debug:
+        msg: "{{ find_local_files }}"
+
+    - name: display the backup files in scope of deletion in ansible node
+      debug:
+        msg: "{{ item }}"
+      with_items: "{{ find_local_files.files | map(attribute='path') | list }}"
+
+    - name: delete the old backup files on ansible node
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items: "{{ find_local_files.files | map(attribute='path') | list }}"
+
+  when:
+    - mqbkup.rc == 0
+    - qmgrname is defined
+  delegate_to: localhost
+
+
+
+
+- block:
+    - name: write overall failure of the backup to the failure file
+      lineinfile:
+         path: '{{ mq_status_file_loc }}/{{ mq_status_file_prefix }}_{{ qmgrname }}_failure.txt'
+         line: "{{ qmgrname }}/{{ mqbkup.rc }}/{{ mqbkup.stderr }}"
+         create: yes
+         mode: '0644'
+
+    - name: Fetch the failure status file to ansible node
+      fetch:
+        src: '{{ mq_status_file_loc }}/{{ mq_status_file_prefix }}_{{ qmgrname }}_failure.txt'
+        dest: '{{ mq_status_file_loc }}/{{ mq_status_file_prefix }}_{{ qmgrname }}_failure.txt'
+        flat: yes
+      register: fetch_failure_status
+
+    - name: display the fetch status response
+      debug:
+        msg: "{{ fetch_failure_status }}"
+
+    - name: Delete the remote failure status files
+      file:
+        path: '{{ mq_status_file_loc }}/{{ mq_status_file_prefix }}_{{ qmgrname }}_failure.txt'
+        state: absent
+  when: 
+    - mqbkup.rc != 0
+    - qmgrname is defined
