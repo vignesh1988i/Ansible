@@ -1,0 +1,9 @@
+---
+# vars file for bkup_prereq
+# Alter the prefix_location as per your firm data path/backup path
+#
+date_stamp: "{{ '%Y%b%d'|strftime() }}"
+
+mqbkup_prefix_location: "/var/mqm"
+mqbkup_dir: "mqbackup"
+mqbkup_dir_perms: '0755'
