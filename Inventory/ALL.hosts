@@ -1,0 +1,8 @@
+[DEV]
+<FQDN or VM or Physical Hostnames>
+
+[QA]
+<FQDN or VM or Physical Hostnames>
+
+[PROD]
+<FQDN or VM or Physical Hostnames>
