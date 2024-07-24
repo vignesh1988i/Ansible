@@ -10,4 +10,6 @@ The ID running this playbook should either be "mqm" or a ID part of "mqm" group 
 
 The roles path can be updated based on your firm based Data working directory path.
 
+The final email report will be sent to the interested mail groups/Individuals.
+
 Please go thru the playbook and make necessary changes to the configurations accordingly.
