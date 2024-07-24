@@ -1,0 +1,71 @@
+---
+# tasks file for email
+
+- name: Gather Fact only for ENV to get the user
+  setup:
+    gather_subset:
+       - "env"
+  when: ansible_user is not defined
+
+- name: display the ansible user
+  debug:
+    msg: "{{ ansible_env.USER }}"
+
+- name: read the contents of final status file
+  shell: " cat {{ filename }} | sort -r -t '/' -k 2,2"
+  register: outfile
+
+- name: Debug
+  debug:
+     msg: "{{ outfile.stdout_lines }}"
+  when:
+    - outfile is defined
+    - outfile.stdout_lines|length > 0
+
+#
+# Update the email to be sent before using it.
+# Line : 67, 68
+#
+- name: sending an email
+  mail:
+    subject: "{{ subject }}"
+    body:
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>MQBackup Summary</title>
+      </head>
+      <body>
+      <p>This email is for MQ Backup Status Summary for <b>[ {{ hosts }} ]</b> Servers/Groups</p>
+      <table border="5">
+            <tr>
+               <th>QmgrName</th>
+               <th>BackupType</th>
+               <th>ReturnCode</th>
+               <th>Comments</th>
+            </tr>
+        {% for item in outfile.stdout_lines %}
+           <tr>
+              {% if item.split("/")[1] == "0" %}
+                 <td align="left" bgcolor=#15F153>{{ item.split("/")[0] }}</td>
+                 <td align="left" bgcolor=#15F153>MQ Object and Authority</td>
+                 <td align="left" bgcolor=#15F153>{{ item.split("/")[1] }}</td>
+                 <td align="left" bgcolor=#15F153>{{ item.split("/")[2] }}</td>
+              {% else %}
+                 <td align="left" bgcolor=#F11527>{{ item.split("/")[0] }}</td>
+                 <td align="left" bgcolor=#F11527>MQ Object and Authority</td>
+                 <td align="left" bgcolor=#F11527>{{ item.split("/")[1] }}</td>
+                 <td align="left" bgcolor=#F11527>{{ item.split("/")[2] }}</td>
+              {% endif %}
+           </tr>
+        {% endfor %}
+      </table>
+
+      </body>
+      </html>
+    from: "{{ ansible_env.USER }}"
+    to:
+      - "vignesh.sundararaman@email.com"
+      - "MQ_Distribution_email@email.com"
+    charset: utf8
+    subtype: html
