@@ -1,8 +1,21 @@
 [DEV]
-<FQDN or VM or Physical Hostnames>
+#
+# Example
+#
+host1.com QmgrName=QM1
+host2.com QmgrName=QM2
 
 [QA]
-<FQDN or VM or Physical Hostnames>
+#
+# Example
+#
+host3.com QmgrName=QM3
+host4.com QmgrName=QM4
 
 [PROD]
-<FQDN or VM or Physical Hostnames>
+#
+# Example
+#
+host5.com QmgrName=QM5
+host6.com QmgrName=QM6
+
