@@ -1,14 +1,23 @@
 ---
 # tasks file for add_symlink
 
+#
+# Role Path can be altered based on your Firm based Data Path
+#
 - include_vars:
      file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/add_symlink/vars/{{ add_symlink_vars }}"
   when: add_symlink_vars is defined
 
+#
+# Role Path can be altered based on your Firm based Data Path
+#
 - include_vars:
      file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/mq_backup/vars/{{ bkup_vars }}"
   when: bkup_vars is defined
 
+#
+# Role Path can be altered based on your Firm based Data Path
+#
 - include_vars:
      file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/bkup_prereq/vars/{{ bkup_prereq_vars }}"
   when: bkup_prereq_vars is defined
