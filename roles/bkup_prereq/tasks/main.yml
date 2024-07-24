@@ -1,0 +1,29 @@
+---
+# tasks file for bkup_prereq
+
+- block:
+   - include_vars:
+        file: "/data/mqm/gitlab/mq_api/Automation/Ansible/roles/bkup_prereq/vars/{{ bkup_prereq_vars }}"
+     when: bkup_prereq_vars is defined
+
+   - name: set the qmgr backup path
+     set_fact:
+        backup_path: "{{ path | default (mqbkup_prefix_location + '/' + mqbkup_dir + '/' + qmgrname) }}"
+
+   - name: display the backup path
+     debug:
+        msg: "{{ backup_path }}"
+
+   - name: create the backup directory
+     file:
+      path:  "{{ backup_path }}"
+      mode: '{{ mqbkup_dir_perms }}'
+      recurse: yes
+      state: directory
+     register: dir_create
+
+   - name: Status of the backup directory
+     debug:
+       msg: "{% if  dir_create.changed == true %} Backup Directory just been created - {{ backup_path }}{% else %}Backup Directory already exists - {{ backup_path }}, Not creating{% endif %}"
+
+  when: qmgrname is defined
