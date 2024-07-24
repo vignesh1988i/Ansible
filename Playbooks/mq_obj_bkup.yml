@@ -108,3 +108,35 @@
          - "'PROD' in group_names"
      
 
+- name: Playbook for consolidating status file in ansible node and send email
+   hosts: localhost
+   gather_facts: no
+   serial: 1
+   tasks:
+     #
+     # Now Merge all the output backup status local files
+     #
+     - name: Merge all the ansible node bkup status files
+       shell: "cat /tmp/mqbackup_QM*.txt >> /tmp/bkup_status.txt"
+
+     - name: Find files on ansible local node to be deleted
+       find:
+         paths: "/tmp"
+         patterns: "mqbackup_QM.+.txt"
+         use_regex: yes
+         file_type: file
+       register: local_status_files
+
+     - name: delete all local status files
+       file:
+         path: "{{ item.path }}"
+         state: absent
+       with_items: "{{ local_status_files.files }}"
+
+     - name: Email the backup status 
+       include_role:
+          name: email
+       vars:
+          subject: "MQ Object Backup Status Summary"
+          filename: "/tmp/bkup_status.txt"
+          hosts: "{{ HOST }}"
